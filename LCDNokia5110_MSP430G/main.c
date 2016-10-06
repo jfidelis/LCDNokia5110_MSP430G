@@ -3,7 +3,19 @@
 #include "PCD8544.h"
 
 char testBlock[8] = {0x00, 0x7F, 0x7F, 0x33, 0x33, 0x03, 0x03, 0x03};
-char testBlock2[8] = {0x00, 0x18, 0x18, 0x18, 0x7E, 0x3C, 0x18, 0x00};
+
+/************* Down arrow *******************************************
+00000000
+‭00011000‬
+‭00011000‬
+‭00011000‬
+‭01111110‬
+‭00111100‬
+‭00011000‬
+00000000
+********************************************************************/
+char DownArrow[8] = {0x00, 0x18, 0x18, 0x18, 0x7E, 0x3C, 0x18, 0x00};
+
 
 void InitCPU(void){
 	// disable WDT
@@ -105,10 +117,10 @@ void main(void) {
 	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE_180);
 
 	Nokia5110_ClearBank(4);
-	Nokia5110_WriteGraphicToLCD(testBlock2, NONE);
-	Nokia5110_WriteGraphicToLCD(testBlock2, FLIP_H);
-	Nokia5110_WriteGraphicToLCD(testBlock2, ROTATE);
-	Nokia5110_WriteGraphicToLCD(testBlock2, ROTATE_90_CCW);
+	Nokia5110_WriteGraphicToLCD(DownArrow, NONE);
+	Nokia5110_WriteGraphicToLCD(DownArrow, FLIP_H);
+	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE);
+	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE_90_CCW);
 
 	Nokia5110_ClearBank(0);
 	Nokia5110_WriteStringToLCD("NOKIA 5110");
