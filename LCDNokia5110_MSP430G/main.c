@@ -25,7 +25,6 @@ char rxBuffer[MAX_BUFF_RX] = {0};
 int posBuffer = 0;
 int posFind = 0;
 
-
 void InitCPU(void){
 	// disable WDT
 	WDTCTL = WDTPW + WDTHOLD;
@@ -110,7 +109,7 @@ void writeAndResponseOK(int line){
 	int i = 0;
 	Nokia5110_ClearBank(line);
 
-	for(i = 6; i < 20; i ++){
+	for(i = 7; i < 20; i ++){
 		if(rxBuffer[i] == '\0'){
 			break;
 		}
@@ -120,42 +119,20 @@ void writeAndResponseOK(int line){
 }
 
 void decode_message(){
+	int line = 0;
 
-
-	posFind = strncmp((const char*)rxBuffer, "AT+L1=", 6);
+	posFind = strncmp((const char*)rxBuffer, "AT+LN=", 6);
 	if(posFind == 0)
 	{
-		writeAndResponseOK(0);
-	}
+		line = rxBuffer[6] - 0x30;
+		writeAndResponseOK(line - 1);
+	}else{
 
-	posFind = strncmp((const char*)rxBuffer, "AT+L2=", 6);
-	if(posFind == 0)
-	{
-		writeAndResponseOK(1);
-	}
-
-	posFind = strncmp((const char*)rxBuffer, "AT+L3=", 6);
-	if(posFind == 0)
-	{
-		writeAndResponseOK(2);
-	}
-
-	posFind = strncmp((const char*)rxBuffer, "AT+L4=", 6);
-	if(posFind == 0)
-	{
-		writeAndResponseOK(3);
-	}
-
-	posFind = strncmp((const char*)rxBuffer, "AT+L5=", 6);
-	if(posFind == 0)
-	{
-		writeAndResponseOK(4);
-	}
-
-	posFind = strncmp((const char*)rxBuffer, "AT+L6=", 6);
-	if(posFind == 0)
-	{
-		writeAndResponseOK(5);
+		posFind = strncmp((const char*)rxBuffer, "AT+EX=", 6);
+		if(posFind == 0){
+			line = rxBuffer[6] - 0x30;
+			Nokia5110_ClearBank(line - 1);
+		}
 	}
 
 	clear_rxBuffer();
@@ -171,8 +148,6 @@ __interrupt void USCI0RX_ISR(void)
 
 		posBuffer = 0;
 		decode_message();
-
-		uart_send_string("OK\r\n");
 
 	}else{
 		rxBuffer[posBuffer++] = data;
