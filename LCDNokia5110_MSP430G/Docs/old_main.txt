@@ -1,0 +1,66 @@
+	_delay_cycles(2000000);
+
+	Nokia5110_SetAddr(0, 0);
+
+	int c = 0x20;
+	while(c < (65 + 0x20)) {
+		Nokia5110_WriteCharToLCD(c);
+		c++;
+	}
+
+	_delay_cycles(2000000);
+	Nokia5110_ClearLCD();
+
+	c = 65 + 0x20;
+
+	while(c < (96 + 0x20)) {
+		Nokia5110_WriteCharToLCD(c);
+		c++;
+	}
+
+	_delay_cycles(2000000);
+
+	c = 0;
+	Nokia5110_ClearBank(3);
+	while(c < 64) {
+		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
+		c++;
+		_delay_cycles(20000);
+	}
+	Nokia5110_ClearBank(4);
+	while(c < 100) {
+		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
+		c++;
+		_delay_cycles(20000);
+	}
+	Nokia5110_ClearBank(5);
+	while(c < 184) {
+		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
+		c++;
+		_delay_cycles(20000);
+	}
+
+	_delay_cycles(2000000);
+
+	Nokia5110_ClearBank(3);
+	Nokia5110_WriteGraphicToLCD(testBlock, NONE);
+	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_V);
+	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_H);
+	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE);
+	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_V | ROTATE);
+	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_H | ROTATE);
+	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE_90_CCW);
+	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE_180);
+
+	Nokia5110_ClearBank(4);
+	Nokia5110_WriteGraphicToLCD(DownArrow, NONE);
+	Nokia5110_WriteGraphicToLCD(DownArrow, FLIP_H);
+	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE);
+	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE_90_CCW);
+
+	Nokia5110_ClearBank(0);
+	Nokia5110_WriteStringToLCD("NOKIA 5110");
+	Nokia5110_ClearBank(1);
+	Nokia5110_WriteStringToLCD("COM");
+	Nokia5110_ClearBank(2);
+	Nokia5110_WriteStringToLCD("MSP430G2553");

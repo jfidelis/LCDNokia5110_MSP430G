@@ -1,6 +1,11 @@
 #include <msp430.h> 
 
 #include "PCD8544.h"
+#include <string.h>
+
+#define UART_RX BIT1
+#define UART_TX BIT2
+#define MAX_BUFF_RX 100
 
 char testBlock[8] = {0x00, 0x7F, 0x7F, 0x33, 0x33, 0x03, 0x03, 0x03};
 
@@ -16,6 +21,10 @@ char testBlock[8] = {0x00, 0x7F, 0x7F, 0x33, 0x33, 0x03, 0x03, 0x03};
 ********************************************************************/
 char DownArrow[8] = {0x00, 0x18, 0x18, 0x18, 0x7E, 0x3C, 0x18, 0x00};
 
+char rxBuffer[MAX_BUFF_RX] = {0};
+int posBuffer = 0;
+int posFind = 0;
+
 
 void InitCPU(void){
 	// disable WDT
@@ -27,6 +36,7 @@ void InitCPU(void){
 
 void InitPorts(void)
 {
+
 	P1OUT |= LCD5110_SCE_PIN + LCD5110_DC_PIN + LCD5110_RST_PIN;
 	P1DIR |= LCD5110_SCE_PIN + LCD5110_DC_PIN + LCD5110_RST_PIN;
 
@@ -35,6 +45,17 @@ void InitPorts(void)
 	P1SEL2 |= LCD5110_SCLK_PIN + LCD5110_DN_PIN;
 
 	LCD5110_RST_PIN_HI;
+}
+
+void ConfigUart(){
+	P1SEL |= UART_RX + UART_TX;					//Set P1.1 and P1.2 to RX to TX
+	P1SEL2 |= UART_RX + UART_TX;
+	UCA0CTL1 |= UCSSEL_2;						//SMCLK
+	UCA0BR0 = 104;								//9600
+	UCA0BR1 = 0;								//9600
+	UCA0MCTL = UCBRS_1;							//Modulation
+	UCA0CTL1 &= ~UCSWRST;						//Start USCI
+	IE2 |= UCA0RXIE;
 }
 
 void ConfigSPI(){
@@ -54,6 +75,7 @@ void main(void) {
 	InitCPU();
 	InitPorts();
 	ConfigSPI();
+	ConfigUart();
 
 	_delay_cycles(500000);
 
@@ -62,72 +84,103 @@ void main(void) {
 
 	Nokia5110_WriteStringToLCD("Nokia 5110");
 
-	_delay_cycles(2000000);
-
-	Nokia5110_SetAddr(0, 0);
-
-	int c = 0x20;
-	while(c < (65 + 0x20)) {
-		Nokia5110_WriteCharToLCD(c);
-		c++;
-	}
-
-	_delay_cycles(2000000);
-	Nokia5110_ClearLCD();
-
-	c = 65 + 0x20;
-
-	while(c < (96 + 0x20)) {
-		Nokia5110_WriteCharToLCD(c);
-		c++;
-	}
-
-	_delay_cycles(2000000);
-
-	c = 0;
-	Nokia5110_ClearBank(3);
-	while(c < 64) {
-		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
-		c++;
-		_delay_cycles(20000);
-	}
-	Nokia5110_ClearBank(4);
-	while(c < 100) {
-		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
-		c++;
-		_delay_cycles(20000);
-	}
-	Nokia5110_ClearBank(5);
-	while(c < 184) {
-		Nokia5110_WriteToLCD(LCD5110_DATA, 0xFF);
-		c++;
-		_delay_cycles(20000);
-	}
-
-	_delay_cycles(2000000);
-
-	Nokia5110_ClearBank(3);
-	Nokia5110_WriteGraphicToLCD(testBlock, NONE);
-	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_V);
-	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_H);
-	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE);
-	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_V | ROTATE);
-	Nokia5110_WriteGraphicToLCD(testBlock, FLIP_H | ROTATE);
-	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE_90_CCW);
-	Nokia5110_WriteGraphicToLCD(testBlock, ROTATE_180);
-
-	Nokia5110_ClearBank(4);
-	Nokia5110_WriteGraphicToLCD(DownArrow, NONE);
-	Nokia5110_WriteGraphicToLCD(DownArrow, FLIP_H);
-	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE);
-	Nokia5110_WriteGraphicToLCD(DownArrow, ROTATE_90_CCW);
-
-	Nokia5110_ClearBank(0);
-	Nokia5110_WriteStringToLCD("NOKIA 5110");
-	Nokia5110_ClearBank(1);
-	Nokia5110_WriteStringToLCD("COM");
-	Nokia5110_ClearBank(2);
-	Nokia5110_WriteStringToLCD("MSP430G2553");
+	//Enter LPM0 with interrupts
+	__bis_SR_register(CPUOFF + GIE);
 }
 
+void uart_send_byte( unsigned char data )
+{
+	while (!(IFG2&UCA0TXIFG));
+		UCA0TXBUF = data;
+}
+
+void uart_send_string(const char *string) {
+	while(*string) {
+		uart_send_byte(*string++);
+	}
+}
+
+void clear_rxBuffer(void){
+	int i = 0;
+	for(i = 0; i < MAX_BUFF_RX; i++)
+		rxBuffer[i] = 0x0;
+}
+
+void writeAndResponseOK(int line){
+	int i = 0;
+	Nokia5110_ClearBank(line);
+
+	for(i = 6; i < 20; i ++){
+		if(rxBuffer[i] == '\0'){
+			break;
+		}
+		Nokia5110_WriteCharToLCD(rxBuffer[i]);
+	}
+	uart_send_string("OK\r\n");
+}
+
+void decode_message(){
+
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L1=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(0);
+	}
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L2=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(1);
+	}
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L3=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(2);
+	}
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L4=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(3);
+	}
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L5=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(4);
+	}
+
+	posFind = strncmp((const char*)rxBuffer, "AT+L6=", 6);
+	if(posFind == 0)
+	{
+		writeAndResponseOK(5);
+	}
+
+	clear_rxBuffer();
+
+}
+
+#pragma vector=USCIAB0RX_VECTOR
+__interrupt void USCI0RX_ISR(void)
+{
+	char data = UCA0RXBUF;
+
+	if(data == '\n'){
+
+		posBuffer = 0;
+		decode_message();
+
+		uart_send_string("OK\r\n");
+
+	}else{
+		rxBuffer[posBuffer++] = data;
+		if(posBuffer > MAX_BUFF_RX ){
+			posBuffer = 0;
+			clear_rxBuffer();
+			uart_send_string("ERR:-1\r\n");
+		}
+	}
+}
 

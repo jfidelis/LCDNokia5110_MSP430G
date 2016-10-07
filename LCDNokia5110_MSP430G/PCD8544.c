@@ -6,6 +6,7 @@
  */
 #include "PCD8544.h"
 
+
 void Nokia5110_WriteStringToLCD(const char *string) {
 	while(*string) {
 		Nokia5110_WriteCharToLCD(*string++);
